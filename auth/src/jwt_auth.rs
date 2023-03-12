@@ -8,25 +8,26 @@ pub const SECRET_KEY: &str = "YOUR SECRET_KEY JWT CODO_MATON TOKEN";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwtClaims {
-    username: String,
+    mail: String,
     exp: i64,
 }
 
 #[handler]
 pub async fn index(req: &mut Request, depot: &mut Depot, res: &mut Response) -> anyhow::Result<()> {
     if req.method() == Method::POST {
-        let (username, password) = (
-            
+        let (mail, password) = (
+            req.query::<String>("mail").unwrap_or_default(),
+            req.query::<String>("password").unwrap_or_default(),
             // req.form::<String>("username").await.unwrap_or_default(),
             // req.form::<String>("password").await.unwrap_or_default(),
         );
-        if !validate(&username, &password) {
+        if !validate(&mail, &password) {
             res.render(Text::Json("Not Authorized"));
             return Ok(());
         }
         let exp = OffsetDateTime::now_utc() + Duration::days(14);
         let claim = JwtClaims {
-            username,
+            mail,
             exp: exp.unix_timestamp(),
         };
         let token = jsonwebtoken::encode(
@@ -41,7 +42,7 @@ pub async fn index(req: &mut Request, depot: &mut Depot, res: &mut Response) -> 
                 let data = depot.jwt_auth_data::<JwtClaims>().unwrap();
                 res.render(Text::Json(format!(
                     "Hi {}, have logged in successfully!",
-                    data.claims.username
+                    data.claims.mail
                 )));
             }
             JwtAuthState::Unauthorized => {
@@ -55,8 +56,8 @@ pub async fn index(req: &mut Request, depot: &mut Depot, res: &mut Response) -> 
     Ok(())
 }
 
-fn validate(username: &str, password: &str) -> bool {
-    username == "root" && password == "pwd"
+fn validate(mail: &str, password: &str) -> bool {
+    mail == "root" && password == "pwd"
 }
 
 // static LOGIN_HTML: &str = r#"<!DOCTYPE html>
