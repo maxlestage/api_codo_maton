@@ -1,4 +1,5 @@
 // use database_connection::db_connection;
+use auth::jwt_auth::{index, JwtClaims, SECRET_KEY};
 use db::db_connection::db_connection;
 use jsonwebtoken::{self, EncodingKey};
 use salvo::{__private::tracing, jwt_auth::QueryFinder, prelude::*};
