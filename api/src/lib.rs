@@ -68,9 +68,24 @@ pub async fn main() {
     // let routing = Router::with_path("signup").post(sign_up);
     // .push(Router::with_path("<id>").get(hello_by_id));
 
+    let routing = Router::new()
+        .push(
+            Router::new()
+                .path("hello")
+                .get(hello_world)
+                .push(Router::with_path("<id>").get(hello_by_id)),
+        )
+        .push(Router::new().path("signup").post(sign_up))
+        .push(
+            Router::new()
+                .path("signin")
+                .hoop(auth_handler)
+                .handle(sign_in),
+        );
+
     // Server Ready
     Server::new(TcpListener::bind("0.0.0.0:7878"))
-        .serve(Router::with_hoop(auth_handler).handle(sign_in))
-        // .serve(routing)
+        // .serve(Router::with_hoop(auth_handler).handle(sign_in))
+        .serve(routing)
         .await;
 }

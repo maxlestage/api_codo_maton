@@ -1,6 +1,7 @@
 use db::db_connection::db_connection;
 use jsonwebtoken::{self, EncodingKey};
 use queries::{password_is_valid, select_user_by_email};
+
 use salvo::http::{Method, StatusError};
 use salvo::prelude::*;
 use sea_orm::DatabaseConnection;
@@ -36,14 +37,9 @@ pub async fn sign_in(
 
         let is_valid = validate(&mail, &password, db_connect);
 
-        if !is_valid.await {
-            res.render(Text::Json("Not Authorized"));
-            res.set_status_error(StatusError::not_acceptable())
-        }
-
         let exp = OffsetDateTime::now_utc() + Duration::days(14);
         let claim = JwtClaims {
-            mail,
+            mail: mail.clone(),
             exp: exp.unix_timestamp(),
         };
         let token = jsonwebtoken::encode(
@@ -51,6 +47,15 @@ pub async fn sign_in(
             &claim,
             &EncodingKey::from_secret(SECRET_KEY.as_bytes()),
         )?;
+
+        if !is_valid.await {
+            res.render(Text::Json("Not Authorized"));
+            res.set_status_error(StatusError::not_acceptable());
+            res.add_header("Authorization", format!("Bearer {}", token), false)
+                .expect("error token");
+            return Ok(());
+        }
+
         println!("{:#?}", token);
         res.render(Redirect::other(&format!("/?jwt_token={}", token)));
     } else {
@@ -61,6 +66,13 @@ pub async fn sign_in(
                     "Hi {}, have logged in successfully!",
                     data.claims.mail
                 )));
+
+                // res.(
+                //     "Authorization",
+                //     format!("Bearer {}", data.claims.mail),
+                //     true,
+                // )
+                // .expect("error token");
             }
             JwtAuthState::Unauthorized => {
                 res.render(Text::Json("Not Authorized"));
@@ -76,17 +88,6 @@ pub async fn sign_in(
 async fn validate(mail: &str, password: &str, db_connect: DatabaseConnection) -> bool {
     match select_user_by_email(db_connect, mail.to_string()).await {
         Some(user) => password_is_valid(password.to_owned(), user.password.to_owned()).await,
-
         None => false,
     }
-    /*  if let user_exist = select_user_by_email(db_connect, mail.to_string())
-        .await
-        .expect("Please verify")
-    {
-        password_is_valid(password.to_owned(), user_exist.password).await
-    } else {
-        false
-    } */
-
-    // mail == "root" && password == "pwd"
 }
