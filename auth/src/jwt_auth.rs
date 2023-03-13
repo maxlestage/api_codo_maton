@@ -34,15 +34,13 @@ pub async fn sign_in(
         println!("mail: {:#?}", mail);
         println!("password: {:#?}", password);
 
-        let email_is_matched = select_user_by_email(db_connect, mail.clone())
-            .await
-            .expect("not matched");
+        let is_valid = validate(&mail, &password, db_connect);
 
-        println!("email_is_matched: {:#?}", email_is_matched);
-        if !validate(&mail, &password) {
+        if !is_valid.await {
             res.render(Text::Json("Not Authorized"));
-            return Ok(());
+            res.set_status_error(StatusError::not_acceptable())
         }
+
         let exp = OffsetDateTime::now_utc() + Duration::days(14);
         let claim = JwtClaims {
             mail,
@@ -75,6 +73,20 @@ pub async fn sign_in(
     Ok(())
 }
 
-fn validate(mail: &str, password: &str) -> bool {
-    mail == "root" && password == "pwd"
+async fn validate(mail: &str, password: &str, db_connect: DatabaseConnection) -> bool {
+    match select_user_by_email(db_connect, mail.to_string()).await {
+        Some(user) => password_is_valid(password.to_owned(), user.password.to_owned()).await,
+
+        None => false,
+    }
+    /*  if let user_exist = select_user_by_email(db_connect, mail.to_string())
+        .await
+        .expect("Please verify")
+    {
+        password_is_valid(password.to_owned(), user_exist.password).await
+    } else {
+        false
+    } */
+
+    // mail == "root" && password == "pwd"
 }
