@@ -285,10 +285,12 @@ name = "auth"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "db",
  "entities",
  "jsonwebtoken",
  "queries",
  "salvo",
+ "sea-orm",
  "serde",
  "time 0.3.20",
  "tokio",

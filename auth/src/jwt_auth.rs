@@ -1,7 +1,9 @@
+use db::db_connection::db_connection;
 use jsonwebtoken::{self, EncodingKey};
-
+use queries::{password_is_valid, select_user_by_email};
 use salvo::http::{Method, StatusError};
 use salvo::prelude::*;
+use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 pub const SECRET_KEY: &str = "YOUR SECRET_KEY JWT CODO_MATON TOKEN";
@@ -25,11 +27,18 @@ pub async fn sign_in(
     depot: &mut Depot,
     res: &mut Response,
 ) -> anyhow::Result<()> {
+    let db_connect: DatabaseConnection = db_connection().await.expect("Error");
     if req.method() == Method::POST {
         let user: User = req.extract().await.unwrap();
         let (mail, password) = (user.mail, user.password);
         println!("mail: {:#?}", mail);
         println!("password: {:#?}", password);
+
+        let email_is_matched = select_user_by_email(db_connect, mail.clone())
+            .await
+            .expect("not matched");
+
+        println!("email_is_matched: {:#?}", email_is_matched);
         if !validate(&mail, &password) {
             res.render(Text::Json("Not Authorized"));
             return Ok(());
