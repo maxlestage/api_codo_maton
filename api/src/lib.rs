@@ -1,4 +1,4 @@
-use auth::jwt_auth::{index, JwtClaims, SECRET_KEY};
+use auth::jwt_auth::{sign_in, JwtClaims, SECRET_KEY};
 use db::db_connection::db_connection;
 // use jsonwebtoken::{self, EncodingKey};
 use entities::*;
@@ -65,12 +65,12 @@ pub async fn main() {
     //     .get(hello_world)
     //     .push(Router::with_path("<id>").get(hello_by_id));
 
-    let routing = Router::with_path("signup").post(sign_up);
+    // let routing = Router::with_path("signup").post(sign_up);
     // .push(Router::with_path("<id>").get(hello_by_id));
 
     // Server Ready
     Server::new(TcpListener::bind("0.0.0.0:7878"))
-        .serve(Router::with_hoop(auth_handler).handle(index))
-        .serve(routing)
+        .serve(Router::with_hoop(auth_handler).handle(sign_in))
+        // .serve(routing)
         .await;
 }

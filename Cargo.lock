@@ -285,7 +285,9 @@ name = "auth"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "entities",
  "jsonwebtoken",
+ "queries",
  "salvo",
  "serde",
  "time 0.3.20",

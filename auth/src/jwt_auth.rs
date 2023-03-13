@@ -1,9 +1,9 @@
 use jsonwebtoken::{self, EncodingKey};
+
 use salvo::http::{Method, StatusError};
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
-
 pub const SECRET_KEY: &str = "YOUR SECRET_KEY JWT CODO_MATON TOKEN";
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -12,15 +12,24 @@ pub struct JwtClaims {
     exp: i64,
 }
 
+#[derive(Serialize, Deserialize, Extractible, Debug)]
+#[extract(default_source(from = "body", format = "json"))]
+struct User {
+    mail: String,
+    password: String,
+}
+
 #[handler]
-pub async fn index(req: &mut Request, depot: &mut Depot, res: &mut Response) -> anyhow::Result<()> {
+pub async fn sign_in(
+    req: &mut Request,
+    depot: &mut Depot,
+    res: &mut Response,
+) -> anyhow::Result<()> {
     if req.method() == Method::POST {
-        let (mail, password) = (
-            req.query::<String>("mail").unwrap_or_default(),
-            req.query::<String>("password").unwrap_or_default(),
-            // req.form::<String>("username").await.unwrap_or_default(),
-            // req.form::<String>("password").await.unwrap_or_default(),
-        );
+        let user: User = req.extract().await.unwrap();
+        let (mail, password) = (user.mail, user.password);
+        println!("mail: {:#?}", mail);
+        println!("password: {:#?}", password);
         if !validate(&mail, &password) {
             res.render(Text::Json("Not Authorized"));
             return Ok(());
@@ -35,6 +44,7 @@ pub async fn index(req: &mut Request, depot: &mut Depot, res: &mut Response) -> 
             &claim,
             &EncodingKey::from_secret(SECRET_KEY.as_bytes()),
         )?;
+        println!("{:#?}", token);
         res.render(Redirect::other(&format!("/?jwt_token={}", token)));
     } else {
         match depot.jwt_auth_state() {
@@ -59,23 +69,3 @@ pub async fn index(req: &mut Request, depot: &mut Depot, res: &mut Response) -> 
 fn validate(mail: &str, password: &str) -> bool {
     mail == "root" && password == "pwd"
 }
-
-// static LOGIN_HTML: &str = r#"<!DOCTYPE html>
-// <html>
-//     <head>
-//         <title>JWT Auth Demo</title>
-//     </head>
-//     <body>
-//         <h1>JWT Auth</h1>
-//         <form action="/" method="post">
-//         <label for="username"><b>Username</b></label>
-//         <input type="text" placeholder="Enter Username" name="username" required>
-
-//         <label for="password"><b>Password</b></label>
-//         <input type="password" placeholder="Enter Password" name="password" required>
-
-//         <button type="submit">Login</button>
-//     </form>
-//     </body>
-// </html>
-// "#;
