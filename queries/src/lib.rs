@@ -16,6 +16,7 @@ pub async fn create_user(
     db: DatabaseConnection,
     user_input: user::ActiveModel,
 ) -> Option<user::Model> {
+    println!("{:?}", user_input);
     let mut user_inputed = user_input;
 
     let user_password = user_inputed.password.as_ref().clone();
