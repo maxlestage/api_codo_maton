@@ -3,11 +3,12 @@ use jsonwebtoken::{self, EncodingKey};
 use queries::{password_is_valid, select_user_by_email};
 
 use salvo::http::{Method, StatusError};
+use salvo::hyper::header::{self, AUTHORIZATION};
 use salvo::prelude::*;
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
-pub const SECRET_KEY: &str = "YOUR SECRET_KEY JWT CODO_MATON TOKEN";
+pub const SECRET_KEY: &str = "YOUR_SECRET_KEY_JWT_CODO_MATON_TOKEN";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwtClaims {
@@ -55,15 +56,19 @@ pub async fn sign_in(
         }
 
         println!("{:#?}", token);
-        res.render(Redirect::other(&format!("/?jwt_token={}", token)));
+        res.add_header(header::AUTHORIZATION, format!("Bearer {}", token), true)
+            .expect("error token");
+        res.render(Text::Json(format!("Bearer:{}", token)));
+        return Ok(());
     } else {
         match depot.jwt_auth_state() {
             JwtAuthState::Authorized => {
-                let data = depot.jwt_auth_data::<JwtClaims>().unwrap();
-                res.render(Text::Plain(format!(
-                    "Hi {}, have logged in successfully!",
-                    data.claims.mail
-                )));
+                /* let data =  */
+                depot.jwt_auth_data::<JwtClaims>().unwrap();
+                // res.render(Text::Plain(format!(
+                //     "Hi {}, have logged in successfully!",
+                //     data.claims.mail
+                // )));
             }
             JwtAuthState::Unauthorized => {
                 res.render(Text::Json("Not Authorized"));

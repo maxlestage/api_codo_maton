@@ -4,6 +4,7 @@ use db::db_connection::db_connection;
 use entities::*;
 use queries::*;
 use salvo::http::StatusCode;
+use salvo::jwt_auth::HeaderFinder;
 use salvo::{__private::tracing, handler, jwt_auth::QueryFinder, prelude::*};
 use sea_orm::{entity::*, query::*, DatabaseConnection};
 use serde::{Deserialize, Serialize};
@@ -43,7 +44,7 @@ async fn sign_up(user_input: User, res: &mut Response) {
     let user = entities::user::ActiveModel::from_json(json!(user_input)).expect("not valid");
 
     create_user(db_connect, user).await.expect("Error");
-    res.set_status_code(StatusCode::CREATED)
+    res.set_status_code(StatusCode::CREATED);
 }
 
 // #[handler]
@@ -55,46 +56,23 @@ pub async fn main() {
     tracing::info!("Listening on http://0.0.0.0:7878");
 
     let auth_handler: JwtAuth<JwtClaims> = JwtAuth::new(SECRET_KEY.to_owned())
-        .with_finders(vec![Box::new(QueryFinder::new("jwt_token"))])
-        .with_response_error(false);
+        .with_finders(vec![Box::new(HeaderFinder::new())])
+        .with_response_error(true);
 
-    // let routing = Router::new()
-    //     .push(
-    //         Router::new()
-    //             .path("hello")
-    //             .get(hello_world)
-    //             .push(Router::with_path("<id>").get(hello_by_id)),
-    //     )
-    //     .push(Router::new().path("signup").post(sign_up))
-    //     .push(
-    //         Router::with_hoop(auth_handler)
-    //             .handle(sign_in)
-    //             .path("signin"),
-    //     );
-
-    // let routing = Router::new()
-    //     .push(Router::new().path("signup").post(sign_up))
-    //     .push(
-    //         Router::new().path("signin").post(sign_in).push(
-    //             Router::with_hoop(auth_handler)
-    //                 .path("hello")
-    //                 .get(hello_world)
-    //                 .push(Router::with_path("<id>").get(hello_by_id)),
-    //         ),
-    //     );
+    let router = Router::new()
+        .get(hello_world)
+        .push(Router::with_path("signup").post(sign_up))
+        .push(Router::with_path("signin").post(sign_in))
+        .push(
+            Router::new()
+                .path("hello")
+                .hoop(auth_handler)
+                .get(hello_world)
+                .push(Router::with_path("<id>").get(hello_by_id)),
+        );
 
     // Server Ready
     Server::new(TcpListener::bind("0.0.0.0:7878"))
-        // .serve(Router::with_hoop(auth_handler).handle(sign_in))
-        .serve(
-            Router::new().handle(sign_in).push(
-                Router::new()
-                    .hoop(auth_handler)
-                    .path("hello")
-                    .get(hello_world)
-                    .push(Router::with_path("<id>").get(hello_by_id)),
-            ),
-        )
-        // .serve(routing)
+        .serve(router)
         .await;
 }
