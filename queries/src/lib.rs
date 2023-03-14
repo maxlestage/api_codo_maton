@@ -64,6 +64,5 @@ pub async fn select_user_by_email(db: DatabaseConnection, mail: String) -> Optio
 }
 
 pub async fn password_is_valid(user_password: String, actual_password_in_db: String) -> bool {
-    let valid = verify(&user_password, &actual_password_in_db).unwrap();
-    dbg!(valid)
+    verify(&user_password, &actual_password_in_db).unwrap()
 }

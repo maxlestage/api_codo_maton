@@ -33,8 +33,6 @@ pub async fn sign_in(
     if req.method() == Method::POST {
         let user: User = req.extract().await.unwrap();
         let (mail, password) = (user.mail, user.password);
-        println!("mail: {:#?}", mail);
-        println!("password: {:#?}", password);
 
         let is_valid = validate(&mail, &password, db_connect);
 
@@ -55,7 +53,6 @@ pub async fn sign_in(
             return Ok(());
         }
 
-        println!("{:#?}", token);
         res.add_header(header::AUTHORIZATION, format!("Bearer {}", token), true)
             .expect("error token");
         res.render(Text::Json(format!("Bearer:{}", token)));
