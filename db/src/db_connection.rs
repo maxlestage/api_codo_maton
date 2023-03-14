@@ -2,8 +2,12 @@ use std::time::Duration;
 
 use sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr};
 
+const DATABASE_URL: &str = "postgres://postgres:codo_maton@localhost:5432";
+const DB_NAME: &str = "codo_maton_db";
+
 pub async fn db_connection() -> Result<DatabaseConnection, DbErr> {
-    let mut opt = ConnectOptions::new("postgres://postgres:codo_maton@localhost:5432".to_owned());
+    let url: String = format!("{}/{}", DATABASE_URL, DB_NAME);
+    let mut opt = ConnectOptions::new(url.to_owned());
     opt.acquire_timeout(Duration::from_secs(10))
         .sqlx_logging(true);
 
@@ -11,6 +15,6 @@ pub async fn db_connection() -> Result<DatabaseConnection, DbErr> {
         .await
         .expect("Not connected to the database.");
 
-    dbg!(Ok(db))
-    // Ok(db)
+    // dbg!(Ok(db))
+    Ok(db)
 }

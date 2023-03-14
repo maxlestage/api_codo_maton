@@ -1,10 +1,14 @@
+use db::db_connection::db_connection;
 use jsonwebtoken::{self, EncodingKey};
+use queries::{password_is_valid, select_user_by_email};
+
 use salvo::http::{Method, StatusError};
+use salvo::hyper::header::{self};
 use salvo::prelude::*;
+use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
-
-pub const SECRET_KEY: &str = "YOUR SECRET_KEY JWT CODO_MATON TOKEN";
+pub const SECRET_KEY: &str = "YOUR_SECRET_KEY_JWT_CODO_MATON_TOKEN";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwtClaims {
@@ -12,22 +16,29 @@ pub struct JwtClaims {
     exp: i64,
 }
 
+#[derive(Serialize, Deserialize, Extractible, Debug)]
+#[extract(default_source(from = "body", format = "json"))]
+struct User {
+    mail: String,
+    password: String,
+}
+
 #[handler]
-pub async fn index(req: &mut Request, depot: &mut Depot, res: &mut Response) -> anyhow::Result<()> {
+pub async fn sign_in(
+    req: &mut Request,
+    depot: &mut Depot,
+    res: &mut Response,
+) -> anyhow::Result<()> {
+    let db_connect: DatabaseConnection = db_connection().await.expect("Error");
     if req.method() == Method::POST {
-        let (mail, password) = (
-            req.query::<String>("mail").unwrap_or_default(),
-            req.query::<String>("password").unwrap_or_default(),
-            // req.form::<String>("username").await.unwrap_or_default(),
-            // req.form::<String>("password").await.unwrap_or_default(),
-        );
-        if !validate(&mail, &password) {
-            res.render(Text::Json("Not Authorized"));
-            return Ok(());
-        }
+        let user: User = req.extract().await.unwrap();
+        let (mail, password) = (user.mail, user.password);
+
+        let is_valid = validate(&mail, &password, db_connect);
+
         let exp = OffsetDateTime::now_utc() + Duration::days(14);
         let claim = JwtClaims {
-            mail,
+            mail: mail.clone(),
             exp: exp.unix_timestamp(),
         };
         let token = jsonwebtoken::encode(
@@ -35,15 +46,21 @@ pub async fn index(req: &mut Request, depot: &mut Depot, res: &mut Response) -> 
             &claim,
             &EncodingKey::from_secret(SECRET_KEY.as_bytes()),
         )?;
-        res.render(Redirect::other(&format!("/?jwt_token={}", token)));
+
+        if !is_valid.await {
+            res.render(Text::Json("Not Authorized"));
+            res.set_status_error(StatusError::not_acceptable());
+            return Ok(());
+        }
+
+        res.add_header(header::AUTHORIZATION, format!("Bearer {}", token), true)
+            .expect("error token");
+        res.render(Text::Json(format!("Bearer:{}", token)));
+        return Ok(());
     } else {
         match depot.jwt_auth_state() {
             JwtAuthState::Authorized => {
-                let data = depot.jwt_auth_data::<JwtClaims>().unwrap();
-                res.render(Text::Json(format!(
-                    "Hi {}, have logged in successfully!",
-                    data.claims.mail
-                )));
+                depot.jwt_auth_data::<JwtClaims>().unwrap();
             }
             JwtAuthState::Unauthorized => {
                 res.render(Text::Json("Not Authorized"));
@@ -56,26 +73,9 @@ pub async fn index(req: &mut Request, depot: &mut Depot, res: &mut Response) -> 
     Ok(())
 }
 
-fn validate(mail: &str, password: &str) -> bool {
-    mail == "root" && password == "pwd"
+async fn validate(mail: &str, password: &str, db_connect: DatabaseConnection) -> bool {
+    match select_user_by_email(db_connect, mail.to_string()).await {
+        Some(user) => password_is_valid(password.to_owned(), user.password.to_owned()).await,
+        None => false,
+    }
 }
-
-// static LOGIN_HTML: &str = r#"<!DOCTYPE html>
-// <html>
-//     <head>
-//         <title>JWT Auth Demo</title>
-//     </head>
-//     <body>
-//         <h1>JWT Auth</h1>
-//         <form action="/" method="post">
-//         <label for="username"><b>Username</b></label>
-//         <input type="text" placeholder="Enter Username" name="username" required>
-
-//         <label for="password"><b>Password</b></label>
-//         <input type="password" placeholder="Enter Password" name="password" required>
-
-//         <button type="submit">Login</button>
-//     </form>
-//     </body>
-// </html>
-// "#;

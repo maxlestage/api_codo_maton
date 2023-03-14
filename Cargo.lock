@@ -74,10 +74,14 @@ checksum = "224afbd727c3d6e4b90103ece64b8d1b67fbb1973b1046c2281eed3f3803f800"
 name = "api"
 version = "0.1.0"
 dependencies = [
+ "async-std",
  "auth",
  "db",
+ "entities",
  "jsonwebtoken",
+ "queries",
  "salvo",
+ "sea-orm",
  "serde",
  "serde_json",
  "tokio",
@@ -281,8 +285,12 @@ name = "auth"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "db",
+ "entities",
  "jsonwebtoken",
+ "queries",
  "salvo",
+ "sea-orm",
  "serde",
  "time 0.3.20",
  "tokio",
