@@ -1,21 +1,13 @@
 use auth::jwt_auth::{sign_in, JwtClaims, SECRET_KEY};
 use db::db_connection::db_connection;
-// use jsonwebtoken::{self, EncodingKey};
-use entities::*;
+
 use queries::*;
 use salvo::http::StatusCode;
 use salvo::jwt_auth::HeaderFinder;
-use salvo::{__private::tracing, handler, jwt_auth::QueryFinder, prelude::*};
-use sea_orm::{entity::*, query::*, DatabaseConnection};
+use salvo::{__private::tracing, handler, prelude::*};
+use sea_orm::{entity::*, DatabaseConnection};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-
-type Result<T> = std::result::Result<T, StatusError>;
-
-// #[derive(Clone, Debug)]
-// struct AppState {
-//     conn: DatabaseConnection,
-// }
 
 #[derive(Serialize, Deserialize, Extractible, Debug)]
 #[extract(default_source(from = "body", format = "json"))]
@@ -38,17 +30,16 @@ async fn hello_by_id(req: &mut Request) -> String {
 
 #[handler]
 async fn sign_up(user_input: User, res: &mut Response) {
-    // res.render(Json(user_input));
     let db_connect: DatabaseConnection = db_connection().await.expect("Error");
 
     let user = entities::user::ActiveModel::from_json(json!(user_input)).expect("not valid");
 
-    create_user(db_connect, user).await.expect("Error");
-    res.set_status_code(StatusCode::CREATED);
+    if create_user(db_connect, user).await.is_some() {
+        res.set_status_code(StatusCode::CREATED);
+    } else {
+        res.set_status_code(StatusCode::BAD_REQUEST);
+    }
 }
-
-// #[handler]
-// async fn sign_in(req: &mut Request) -> String {}
 
 #[tokio::main]
 pub async fn main() {

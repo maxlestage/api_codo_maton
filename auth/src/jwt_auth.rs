@@ -3,7 +3,7 @@ use jsonwebtoken::{self, EncodingKey};
 use queries::{password_is_valid, select_user_by_email};
 
 use salvo::http::{Method, StatusError};
-use salvo::hyper::header::{self, AUTHORIZATION};
+use salvo::hyper::header::{self};
 use salvo::prelude::*;
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
@@ -63,12 +63,7 @@ pub async fn sign_in(
     } else {
         match depot.jwt_auth_state() {
             JwtAuthState::Authorized => {
-                /* let data =  */
                 depot.jwt_auth_data::<JwtClaims>().unwrap();
-                // res.render(Text::Plain(format!(
-                //     "Hi {}, have logged in successfully!",
-                //     data.claims.mail
-                // )));
             }
             JwtAuthState::Unauthorized => {
                 res.render(Text::Json("Not Authorized"));
