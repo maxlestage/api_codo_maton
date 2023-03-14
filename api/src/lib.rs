@@ -54,38 +54,47 @@ pub async fn main() {
     tracing_subscriber::fmt().init();
     tracing::info!("Listening on http://0.0.0.0:7878");
 
-    // db_connection().await.expect("Error");
-
     let auth_handler: JwtAuth<JwtClaims> = JwtAuth::new(SECRET_KEY.to_owned())
         .with_finders(vec![Box::new(QueryFinder::new("jwt_token"))])
         .with_response_error(false);
 
-    // // Define Routing tree
-    // let routing = Router::with_path("")
-    //     .get(hello_world)
-    //     .push(Router::with_path("<id>").get(hello_by_id));
+    // let routing = Router::new()
+    //     .push(
+    //         Router::new()
+    //             .path("hello")
+    //             .get(hello_world)
+    //             .push(Router::with_path("<id>").get(hello_by_id)),
+    //     )
+    //     .push(Router::new().path("signup").post(sign_up))
+    //     .push(
+    //         Router::with_hoop(auth_handler)
+    //             .handle(sign_in)
+    //             .path("signin"),
+    //     );
 
-    // let routing = Router::with_path("signup").post(sign_up);
-    // .push(Router::with_path("<id>").get(hello_by_id));
-
-    let routing = Router::new()
-        .push(
-            Router::new()
-                .path("hello")
-                .get(hello_world)
-                .push(Router::with_path("<id>").get(hello_by_id)),
-        )
-        .push(Router::new().path("signup").post(sign_up))
-        .push(
-            Router::new()
-                .path("signin")
-                .hoop(auth_handler)
-                .handle(sign_in),
-        );
+    // let routing = Router::new()
+    //     .push(Router::new().path("signup").post(sign_up))
+    //     .push(
+    //         Router::new().path("signin").post(sign_in).push(
+    //             Router::with_hoop(auth_handler)
+    //                 .path("hello")
+    //                 .get(hello_world)
+    //                 .push(Router::with_path("<id>").get(hello_by_id)),
+    //         ),
+    //     );
 
     // Server Ready
     Server::new(TcpListener::bind("0.0.0.0:7878"))
         // .serve(Router::with_hoop(auth_handler).handle(sign_in))
-        .serve(routing)
+        .serve(
+            Router::new().handle(sign_in).push(
+                Router::new()
+                    .hoop(auth_handler)
+                    .path("hello")
+                    .get(hello_world)
+                    .push(Router::with_path("<id>").get(hello_by_id)),
+            ),
+        )
+        // .serve(routing)
         .await;
 }

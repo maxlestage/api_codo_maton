@@ -51,8 +51,6 @@ pub async fn sign_in(
         if !is_valid.await {
             res.render(Text::Json("Not Authorized"));
             res.set_status_error(StatusError::not_acceptable());
-            res.add_header("Authorization", format!("Bearer {}", token), false)
-                .expect("error token");
             return Ok(());
         }
 
@@ -62,17 +60,10 @@ pub async fn sign_in(
         match depot.jwt_auth_state() {
             JwtAuthState::Authorized => {
                 let data = depot.jwt_auth_data::<JwtClaims>().unwrap();
-                res.render(Text::Json(format!(
+                res.render(Text::Plain(format!(
                     "Hi {}, have logged in successfully!",
                     data.claims.mail
                 )));
-
-                // res.(
-                //     "Authorization",
-                //     format!("Bearer {}", data.claims.mail),
-                //     true,
-                // )
-                // .expect("error token");
             }
             JwtAuthState::Unauthorized => {
                 res.render(Text::Json("Not Authorized"));
