@@ -37,6 +37,7 @@ async fn sign_up(user_input: User, res: &mut Response) {
     if create_user(db_connect, user).await.is_some() {
         res.set_status_code(StatusCode::CREATED);
     } else {
+        res.render(Text::Json("Bad Request"));
         res.set_status_code(StatusCode::BAD_REQUEST);
     }
 }

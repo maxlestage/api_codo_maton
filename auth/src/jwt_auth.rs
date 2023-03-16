@@ -2,7 +2,7 @@ use db::db_connection::db_connection;
 use jsonwebtoken::{self, EncodingKey};
 use queries::{password_is_valid, select_user_by_email};
 
-use salvo::http::{Method, StatusError};
+use salvo::http::Method;
 use salvo::hyper::header::{self};
 use salvo::prelude::*;
 use sea_orm::DatabaseConnection;
@@ -48,8 +48,8 @@ pub async fn sign_in(
         )?;
 
         if !is_valid.await {
-            res.render(Text::Json("Not Authorized"));
-            res.set_status_error(StatusError::not_acceptable());
+            res.render(Text::Json("Not Acceptable"));
+            res.set_status_code(StatusCode::NOT_ACCEPTABLE);
             return Ok(());
         }
 
@@ -61,12 +61,15 @@ pub async fn sign_in(
         match depot.jwt_auth_state() {
             JwtAuthState::Authorized => {
                 depot.jwt_auth_data::<JwtClaims>().unwrap();
+                res.set_status_code(StatusCode::ACCEPTED);
             }
             JwtAuthState::Unauthorized => {
-                res.render(Text::Json("Not Authorized"));
+                res.render(Text::Json("Unauthorized"));
+                res.set_status_code(StatusCode::UNAUTHORIZED);
             }
             JwtAuthState::Forbidden => {
-                res.set_status_error(StatusError::forbidden());
+                res.render(Text::Json("Forbidden"));
+                res.set_status_code(StatusCode::FORBIDDEN);
             }
         }
     }
